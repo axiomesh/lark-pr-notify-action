@@ -191,10 +191,12 @@ function run() {
             const timeout = core.getInput('timeout');
             const interval = core.getInput('interval');
             const tk = core.getInput('token');
+            const jobName = core.getInput('job_name');
             const status = yield (0, wait_1.polling)({
+                token: tk,
                 timeoutSeconds: parseInt(timeout, 10),
                 intervalSeconds: parseInt(interval, 10),
-                token: tk
+                jobName
             });
             core.info(`the workflows status is ${status}`);
             const templateID = core.getInput('template_id');
@@ -315,9 +317,12 @@ function wait(milliseconds) {
         });
     });
 }
+// interface WorkflowInfo {
+//     workflow_name: string
+// }
 function polling(options) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { timeoutSeconds, intervalSeconds, token } = options;
+        const { timeoutSeconds, intervalSeconds, token, jobName } = options;
         let now = new Date().getTime();
         const deadline = now + timeoutSeconds * 1000;
         let isSuccess;
@@ -331,7 +336,7 @@ function polling(options) {
         };
         while (now < deadline) {
             actionStatus = yield checkActions(actionStatus, token);
-            checkStatus = yield checkChecks(checkStatus, token);
+            checkStatus = yield checkChecks(jobName, checkStatus, token);
             if (!actionStatus.isCompleted || !checkStatus.isCompleted) {
                 core.info('waiting...');
                 yield wait(intervalSeconds * 1000);
@@ -377,7 +382,7 @@ function checkActions(actionStatus, token) {
             if (github_1.context.workflow === workflow.name) {
                 continue;
             }
-            core.info(`action ${workflow.name}'s status is ${workflow.status} and conclusion is ${workflow.conclusion}`);
+            core.info(`action ${workflow.name}'s status is ${workflow.status} and conclusion is ${workflow.conclusion}, current job:${github_1.context.job}, current action:${github_1.context.action}`);
             if (workflow.status !== 'completed') {
                 isCompleted = false;
             }
@@ -391,7 +396,7 @@ function checkActions(actionStatus, token) {
         };
     });
 }
-function checkChecks(checkStatus, token) {
+function checkChecks(jobName, checkStatus, token) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
         if (checkStatus.isCompleted) {
@@ -412,9 +417,8 @@ function checkChecks(checkStatus, token) {
         let isCompleted = true;
         let isSuccess = true;
         for (const check of checks.check_runs) {
-            const workflowName = yield getWorkflowNameByJobID(check.id, token);
-            // ignore lark-pr-notify-action
-            if (github_1.context.workflow === workflowName) {
+            // ignore lark-pr-notify job
+            if (check.name === jobName) {
                 continue;
             }
             core.info(`check ${check.name}'s status is ${check.status} and conclusion is ${check.conclusion}`);
@@ -431,22 +435,23 @@ function checkChecks(checkStatus, token) {
         };
     });
 }
-function getWorkflowNameByJobID(jobID, token) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const http = new httpm.HttpClient('lark-pr-notify-action');
-        const url = `${github_1.context.apiUrl}/repos/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/jobs/${jobID}`;
-        let headers = {};
-        if (token && token !== '') {
-            headers = {
-                Authorization: `Bearer ${token}`
-            };
-        }
-        const response = yield http.get(url, headers);
-        const body = yield response.readBody();
-        const info = JSON.parse(body);
-        return info.workflow_name;
-    });
-}
+// async function getWorkflowNameByJobID(
+//     jobID: number,
+//     token?: string
+// ): Promise<string> {
+//     const http = new httpm.HttpClient('lark-pr-notify-action')
+//     const url = `${context.apiUrl}/repos/${context.repo.owner}/${context.repo.repo}/actions/jobs/${jobID}`
+//     let headers = {}
+//     if (token && token !== '') {
+//         headers = {
+//             Authorization: `Bearer ${token}`
+//         }
+//     }
+//     const response = await http.get(url, headers)
+//     const body = await response.readBody()
+//     const info: WorkflowInfo = JSON.parse(body)
+//     return info.workflow_name
+// }
 
 
 /***/ }),

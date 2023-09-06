@@ -8,10 +8,12 @@ async function run(): Promise<void> {
         const timeout = core.getInput('timeout')
         const interval = core.getInput('interval')
         const tk = core.getInput('token')
+        const jobName = core.getInput('job_name')
         const status: string = await polling({
+            token: tk,
             timeoutSeconds: parseInt(timeout, 10),
             intervalSeconds: parseInt(interval, 10),
-            token: tk
+            jobName
         })
 
         core.info(`the workflows status is ${status}`)

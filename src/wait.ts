@@ -15,6 +15,7 @@ interface Options {
     token: string
     timeoutSeconds: number
     intervalSeconds: number
+    jobName: string
 }
 
 interface WorkflowRuns {
@@ -43,12 +44,12 @@ interface Status {
     isSuccess: boolean
 }
 
-interface WorkflowInfo {
-    workflow_name: string
-}
+// interface WorkflowInfo {
+//     workflow_name: string
+// }
 
 export async function polling(options: Options): Promise<string> {
-    const {timeoutSeconds, intervalSeconds, token} = options
+    const {timeoutSeconds, intervalSeconds, token, jobName} = options
     let now = new Date().getTime()
     const deadline = now + timeoutSeconds * 1000
 
@@ -63,7 +64,7 @@ export async function polling(options: Options): Promise<string> {
     }
     while (now < deadline) {
         actionStatus = await checkActions(actionStatus, token)
-        checkStatus = await checkChecks(checkStatus, token)
+        checkStatus = await checkChecks(jobName, checkStatus, token)
 
         if (!actionStatus.isCompleted || !checkStatus.isCompleted) {
             core.info('waiting...')
@@ -110,7 +111,7 @@ async function checkActions(
             continue
         }
         core.info(
-            `action ${workflow.name}'s status is ${workflow.status} and conclusion is ${workflow.conclusion}`
+            `action ${workflow.name}'s status is ${workflow.status} and conclusion is ${workflow.conclusion}, current job:${context.job}, current action:${context.action}`
         )
         if (workflow.status !== 'completed') {
             isCompleted = false
@@ -127,6 +128,7 @@ async function checkActions(
 }
 
 async function checkChecks(
+    jobName: string,
     checkStatus: Status,
     token?: string
 ): Promise<Status> {
@@ -150,14 +152,15 @@ async function checkChecks(
     let isCompleted = true
     let isSuccess = true
     for (const check of checks.check_runs) {
-        const workflowName = await getWorkflowNameByJobID(check.id, token)
-        // ignore lark-pr-notify-action
-        if (context.workflow === workflowName) {
+        // ignore lark-pr-notify job
+        if (check.name === jobName) {
             continue
         }
+
         core.info(
             `check ${check.name}'s status is ${check.status} and conclusion is ${check.conclusion}`
         )
+
         if (check.status !== 'completed') {
             isCompleted = false
         }
@@ -172,20 +175,20 @@ async function checkChecks(
     }
 }
 
-async function getWorkflowNameByJobID(
-    jobID: number,
-    token?: string
-): Promise<string> {
-    const http = new httpm.HttpClient('lark-pr-notify-action')
-    const url = `${context.apiUrl}/repos/${context.repo.owner}/${context.repo.repo}/actions/jobs/${jobID}`
-    let headers = {}
-    if (token && token !== '') {
-        headers = {
-            Authorization: `Bearer ${token}`
-        }
-    }
-    const response = await http.get(url, headers)
-    const body = await response.readBody()
-    const info: WorkflowInfo = JSON.parse(body)
-    return info.workflow_name
-}
+// async function getWorkflowNameByJobID(
+//     jobID: number,
+//     token?: string
+// ): Promise<string> {
+//     const http = new httpm.HttpClient('lark-pr-notify-action')
+//     const url = `${context.apiUrl}/repos/${context.repo.owner}/${context.repo.repo}/actions/jobs/${jobID}`
+//     let headers = {}
+//     if (token && token !== '') {
+//         headers = {
+//             Authorization: `Bearer ${token}`
+//         }
+//     }
+//     const response = await http.get(url, headers)
+//     const body = await response.readBody()
+//     const info: WorkflowInfo = JSON.parse(body)
+//     return info.workflow_name
+// }

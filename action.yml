@@ -26,7 +26,7 @@ inputs:
   timeout:
     required: false
     description: "the timeout time which wait for other workflows"
-    default: "1800"
+    default: "600"
 
   interval:
     required: false
@@ -40,6 +40,11 @@ inputs:
   secret:
     required: false
     description: "the secret to signature verfiy"
+
+  job_name:
+    required: false
+    description: "the job name "
+    default: "Lark notify"
 
 runs:
   using: "node16"
