@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {generateMessage, notify} from './lark'
+import {generateMessage, notify} from './dingtalk'
 import {polling} from './wait'
 
 async function run(): Promise<void> {
@@ -17,22 +17,13 @@ async function run(): Promise<void> {
         })
 
         core.info(`the workflows status is ${status}`)
-        const templateID = core.getInput('template_id')
         const notificationTitle = core.getInput('notification_title')
         const users = core.getInput('users')
         const reviewers = core.getInput('reviewers')
-        const secret = core.getInput('secret')
-        const msg = generateMessage(
-            templateID,
-            notificationTitle,
-            users,
-            reviewers,
-            status,
-            secret
-        )
+        const msg = generateMessage(notificationTitle, users, reviewers, status)
         // need notify
         if (msg != null) {
-            core.info('send notification to lark')
+            core.info('send notification to dingtalk')
             const webhook = core.getInput('webhook')
             await notify(webhook, msg)
         }

@@ -98,4 +98,11 @@ Thumbs.db
 __tests__/runner/*
 lib/**/*
 
+# Ignore env files
+**/.env.js
+
+# Ignore IDE files
+.vscode
+.IDEA
+
 .history
