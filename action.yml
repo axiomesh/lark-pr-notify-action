@@ -1,11 +1,7 @@
-name: "Lark pull request notify"
-description: "A lark pull request notify of GitHub actions."
+name: "Dingtalk pull request notify"
+description: "A dingtalk pull request notify of GitHub actions."
 author: "zhecks"
 inputs:
-  template_id:
-    required: true
-    description: "the lark template ID. You can create by self or use template.json"
-
   notification_title:
     required: false
     description: "the title of notification"
@@ -17,11 +13,11 @@ inputs:
 
   users:
     required: true
-    description: "the user mapping to the lark's open id, e.g. Alice|openID,Bob|openID"
+    description: "the user mapping to the dingtalk's phone number, e.g. Alice|150xxxx,Bob|139xxxx"
   
   reviewers:
     required: true
-    description: "the reviewer, e.g. openID,openID"
+    description: "the reviewer, e.g. phone1,phone2"
 
   timeout:
     required: false
@@ -35,16 +31,12 @@ inputs:
 
   webhook:
     required: true
-    description: "the lark robot's webhook"
+    description: "the dingtalk robot's webhook"
   
-  secret:
-    required: false
-    description: "the secret to signature verfiy"
-
   job_name:
     required: false
     description: "the job name "
-    default: "Lark notify"
+    default: "Dingtalk notify"
 
 runs:
   using: "node16"

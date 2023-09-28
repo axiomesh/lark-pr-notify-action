@@ -1,7 +1,7 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 626:
+/***/ 5209:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -42,10 +42,14 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.notify = exports.generateMessage = void 0;
 const github_1 = __nccwpck_require__(5438);
 const httpm = __importStar(__nccwpck_require__(6255));
-const safe_1 = __nccwpck_require__(7526);
 const core = __importStar(__nccwpck_require__(2186));
-function generateAt(contentWorkflowsStatus, openIDs) {
+function generateAt(contentWorkflowsStatus, phoneNums) {
     let contentAt = '';
+    const paramAt = {
+        atMobiles: [],
+        atUserIds: [],
+        atAll: false
+    };
     switch (contentWorkflowsStatus.toLowerCase()) {
         case 'success':
             contentAt = '审核人：'.toString();
@@ -53,12 +57,13 @@ function generateAt(contentWorkflowsStatus, openIDs) {
         default:
             contentAt = '创建人：'.toString();
     }
-    for (const openID of openIDs) {
-        contentAt = contentAt + `<at id='${openID}'></at> `.toString();
+    for (const number of phoneNums) {
+        contentAt = contentAt + `@${number} `.toString();
+        paramAt.atMobiles.push(number);
     }
-    return contentAt;
+    return { contentAt, paramAt };
 }
-function generateMessage(templateID, notificationTitle, users, reviewers, contentWorkflowsStatus, secret) {
+function generateMessage(notificationTitle, users, reviewers, contentWorkflowsStatus) {
     var _a, _b;
     const contentPRUrl = ((_a = github_1.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.html_url) || '';
     contentWorkflowsStatus = contentWorkflowsStatus.toUpperCase();
@@ -96,30 +101,19 @@ function generateMessage(templateID, notificationTitle, users, reviewers, conten
         }
     }
     const contentAt = generateAt(contentWorkflowsStatus, openIDs);
+    const prContent = `![screenshot](https://i0.wp.com/saixiii.com/wp-content/uploads/2017/05/github.png?fit=573%2C248&ssl=1)\n
+    ---\n
+    Pull Request：<a href='${contentPRUrl}'>${contentPRTitle}</a>\n
+    创建人：${contentAt.contentAt}\n
+    工作流状态：<font color='${contentWorkflowsStatusColor}'>${contentWorkflowsStatus}</font>\n\n`;
     const msgCard = {
-        type: 'template',
-        data: {
-            template_id: templateID,
-            template_variable: {
-                notification_title: notificationTitle,
-                content_pr_url: contentPRUrl,
-                content_at: contentAt,
-                content_pr_title: contentPRTitle,
-                content_workflows_status: contentWorkflowsStatus,
-                content_workflows_status_color: contentWorkflowsStatusColor,
-                button_pr_url: contentPRUrl
-            }
-        }
+        title: notificationTitle,
+        text: prContent
     };
-    // generate sign
-    const now = Math.floor(Date.now() / 1000).toString();
-    core.info(`timestamp: ${now}`);
-    const signature = (0, safe_1.generateSignature)(now, secret);
     return {
-        msg_type: 'interactive',
-        card: JSON.stringify(msgCard),
-        timestamp: now,
-        sign: signature
+        msgtype: 'makrdown',
+        markdown: msgCard,
+        at: contentAt.paramAt
     };
 }
 exports.generateMessage = generateMessage;
@@ -132,9 +126,9 @@ function notify(webhook, msg) {
             throw new Error(`send request to webhook error, status code is ${response.message.statusCode}`);
         }
         const body = yield response.readBody();
-        const larkResp = JSON.parse(body);
-        if (larkResp.code !== 0) {
-            throw new Error(`send request to webhook error, err msg is ${larkResp.msg}`);
+        const dingtalkResp = JSON.parse(body);
+        if (dingtalkResp.errcode !== 0) {
+            throw new Error(`send request to webhook error, err msg is ${dingtalkResp.errmsg}`);
         }
     });
 }
@@ -182,7 +176,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const lark_1 = __nccwpck_require__(626);
+const dingtalk_1 = __nccwpck_require__(5209);
 const wait_1 = __nccwpck_require__(5817);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -199,17 +193,15 @@ function run() {
                 jobName
             });
             core.info(`the workflows status is ${status}`);
-            const templateID = core.getInput('template_id');
             const notificationTitle = core.getInput('notification_title');
             const users = core.getInput('users');
             const reviewers = core.getInput('reviewers');
-            const secret = core.getInput('secret');
-            const msg = (0, lark_1.generateMessage)(templateID, notificationTitle, users, reviewers, status, secret);
+            const msg = (0, dingtalk_1.generateMessage)(notificationTitle, users, reviewers, status);
             // need notify
             if (msg != null) {
-                core.info('send notification to lark');
+                core.info('send notification to dingtalk');
                 const webhook = core.getInput('webhook');
-                yield (0, lark_1.notify)(webhook, msg);
+                yield (0, dingtalk_1.notify)(webhook, msg);
             }
             core.info('finalize');
         }
@@ -220,47 +212,6 @@ function run() {
     });
 }
 run();
-
-
-/***/ }),
-
-/***/ 7526:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.generateSignature = void 0;
-const crypto = __importStar(__nccwpck_require__(6113));
-function generateSignature(timestamp, secret) {
-    const stringToSign = `${timestamp}\n${secret}`;
-    const hmac = crypto.createHmac('sha256', stringToSign);
-    return hmac.digest('base64');
-}
-exports.generateSignature = generateSignature;
 
 
 /***/ }),
@@ -364,7 +315,7 @@ function checkActions(actionStatus, token) {
             return actionStatus;
         }
         const headSha = (_a = github_1.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.head.sha;
-        const http = new httpm.HttpClient('lark-pr-notify-action');
+        const http = new httpm.HttpClient('dingtalk-pr-notify-action');
         const url = `${github_1.context.apiUrl}/repos/${github_1.context.repo.owner}/${github_1.context.repo.repo}/actions/runs?head_sha=${headSha}`;
         let headers = {};
         if (token && token !== '') {
@@ -403,7 +354,7 @@ function checkChecks(jobName, checkStatus, token) {
             return checkStatus;
         }
         const headSha = (_a = github_1.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.head.sha;
-        const http = new httpm.HttpClient('lark-pr-notify-action');
+        const http = new httpm.HttpClient('dingtalk-pr-notify-action');
         const url = `${github_1.context.apiUrl}/repos/${github_1.context.repo.owner}/${github_1.context.repo.repo}/commits/${headSha}/check-runs`;
         let headers = {};
         if (token && token !== '') {

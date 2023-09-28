@@ -1,43 +1,39 @@
 import {context} from '@actions/github'
 import * as httpm from '@actions/http-client'
-import {generateSignature} from './safe'
 import * as core from '@actions/core'
 
 interface message {
-    msg_type: string
-    card: string
-    timestamp: string
-    sign: string
+    msgtype: string
+    markdown: markdown
+    at: at
 }
 
-interface card {
-    type: string
-    data: data
+interface markdown {
+    title: string
+    text: string
 }
 
-interface data {
-    template_id: string
-    template_variable: template_variable
+interface at {
+    atMobiles: string[]
+    atUserIds: string[]
+    atAll: boolean
 }
 
-interface template_variable {
-    notification_title: string
-    content_pr_url: string
-    content_pr_title: string
-    content_at: string
-    content_workflows_status: string
-    content_workflows_status_color: string
-    button_pr_url: string
+interface dingtalkResponse {
+    errcode: number
+    errmsg: string
 }
 
-interface larkResponse {
-    code: number
-    data: object
-    msg: string
-}
-
-function generateAt(contentWorkflowsStatus: string, openIDs: string[]): string {
+function generateAt(
+    contentWorkflowsStatus: string,
+    phoneNums: string[]
+): {contentAt: string; paramAt: at} {
     let contentAt = ''
+    const paramAt = {
+        atMobiles: [] as string[],
+        atUserIds: [] as string[],
+        atAll: false
+    }
     switch (contentWorkflowsStatus.toLowerCase()) {
         case 'success':
             contentAt = '审核人：'.toString()
@@ -45,19 +41,18 @@ function generateAt(contentWorkflowsStatus: string, openIDs: string[]): string {
         default:
             contentAt = '创建人：'.toString()
     }
-    for (const openID of openIDs) {
-        contentAt = contentAt + `<at id='${openID}'></at> `.toString()
+    for (const number of phoneNums) {
+        contentAt = contentAt + `@${number} `.toString()
+        paramAt.atMobiles.push(number)
     }
-    return contentAt
+    return {contentAt, paramAt}
 }
 
 export function generateMessage(
-    templateID: string,
     notificationTitle: string,
     users: string,
     reviewers: string,
-    contentWorkflowsStatus: string,
-    secret: string
+    contentWorkflowsStatus: string
 ): message | undefined {
     const contentPRUrl = context.payload.pull_request?.html_url || ''
     contentWorkflowsStatus = contentWorkflowsStatus.toUpperCase()
@@ -95,49 +90,36 @@ export function generateMessage(
         }
     }
     const contentAt = generateAt(contentWorkflowsStatus, openIDs)
+    const prContent = `Pull Request：[${contentPRTitle}](${contentPRUrl})\n\n${contentAt.contentAt}\n工作流状态：<font color='${contentWorkflowsStatusColor}'>${contentWorkflowsStatus}</font>\n![screenshot](https://i0.wp.com/saixiii.com/wp-content/uploads/2017/05/github.png?fit=573%2C248&ssl=1)\n`.toString()
 
-    const msgCard: card = {
-        type: 'template',
-        data: {
-            template_id: templateID,
-            template_variable: {
-                notification_title: notificationTitle,
-                content_pr_url: contentPRUrl,
-                content_at: contentAt,
-                content_pr_title: contentPRTitle,
-                content_workflows_status: contentWorkflowsStatus,
-                content_workflows_status_color: contentWorkflowsStatusColor,
-                button_pr_url: contentPRUrl
-            }
-        }
+    const msgCard: markdown = {
+        title: notificationTitle,
+        text: prContent
     }
-    // generate sign
-    const now = Math.floor(Date.now() / 1000).toString()
-    core.info(`timestamp: ${now}`)
-    const signature = generateSignature(now, secret)
-
     return {
-        msg_type: 'interactive',
-        card: JSON.stringify(msgCard),
-        timestamp: now,
-        sign: signature
+        msgtype: 'markdown',
+        markdown: msgCard,
+        at: contentAt.paramAt
     }
 }
 
 export async function notify(webhook: string, msg: message): Promise<void> {
     const jsonStr = JSON.stringify(msg)
     const http = new httpm.HttpClient()
-    const response = await http.post(webhook, jsonStr, httpm.Headers)
+    const headers = {
+        'Content-Type': 'application/json', // Set the correct Content-Type
+    };
+    const response = await http.post(webhook, jsonStr, headers)
     if (response.message.statusCode !== httpm.HttpCodes.OK) {
         throw new Error(
             `send request to webhook error, status code is ${response.message.statusCode}`
         )
     }
     const body = await response.readBody()
-    const larkResp: larkResponse = JSON.parse(body)
-    if (larkResp.code !== 0) {
+    const dingtalkResp: dingtalkResponse = JSON.parse(body)
+    if (dingtalkResp.errcode !== 0) {
         throw new Error(
-            `send request to webhook error, err msg is ${larkResp.msg}`
+            `send request to webhook error, err msg is ${dingtalkResp.errmsg}`
         )
     }
 }

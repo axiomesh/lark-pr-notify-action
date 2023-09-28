@@ -91,7 +91,7 @@ async function checkActions(
         return actionStatus
     }
     const headSha = context.payload.pull_request?.head.sha
-    const http = new httpm.HttpClient('lark-pr-notify-action')
+    const http = new httpm.HttpClient('dingtalk-pr-notify-action')
     const url = `${context.apiUrl}/repos/${context.repo.owner}/${context.repo.repo}/actions/runs?head_sha=${headSha}`
     let headers = {}
     if (token && token !== '') {
@@ -137,7 +137,7 @@ async function checkChecks(
     }
 
     const headSha = context.payload.pull_request?.head.sha
-    const http = new httpm.HttpClient('lark-pr-notify-action')
+    const http = new httpm.HttpClient('dingtalk-pr-notify-action')
     const url = `${context.apiUrl}/repos/${context.repo.owner}/${context.repo.repo}/commits/${headSha}/check-runs`
     let headers = {}
     if (token && token !== '') {
