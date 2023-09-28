@@ -65,6 +65,9 @@ export async function polling(options: Options): Promise<string> {
     while (now < deadline) {
         actionStatus = await checkActions(actionStatus, token)
         checkStatus = await checkChecks(jobName, checkStatus, token)
+        core.info(
+            `checked status: [actionStatus: ${actionStatus.isCompleted}, checkStatus: ${checkStatus.isCompleted}]`
+        )
 
         if (!actionStatus.isCompleted || !checkStatus.isCompleted) {
             core.info('waiting...')
@@ -106,7 +109,7 @@ async function checkActions(
     let isCompleted = true
     let isSuccess = true
     for (const workflow of workflows.workflow_runs) {
-        // ignore lark-pr-notify-action
+        // ignore dingtalk-pr-notify-action
         if (context.workflow === workflow.name) {
             continue
         }
