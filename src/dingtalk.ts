@@ -71,14 +71,14 @@ export function generateMessage(
     let openIDs: string[] = []
     // success, notify reviewers
     if (contentWorkflowsStatus === 'SUCCESS') {
-        openIDs = reviewers.split(',').filter(elm => elm)
+        openIDs = reviewers.split(',').map((word) => word.trim()).filter(elm => elm)
     } else {
         // fail, notify creator
         const userArr = users.split(',')
         for (const user of userArr) {
-            const userMapping = user.split(':').filter(elm => elm)
+            const userMapping = user.split(':').map((word) => word.trim()).filter(elm => elm)
             if (userMapping.length !== 2) {
-                throw new Error('the secret users is error')
+                throw new Error('the secret users is error, perhaps not split by ":"')
             }
             if (userMapping[0] === context.actor) {
                 openIDs.push(userMapping[1])
