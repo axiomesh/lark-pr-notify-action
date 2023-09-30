@@ -22,7 +22,7 @@
 
 * **token**: github令牌，私有仓库必须，公共仓库也能通过令牌提升api调用次数
 
-* **users<font color=red>*</font>**: github账户和钉钉用户手机号的映射关系，e.g. "Alice|150xxxx,Bob|172xxxx"
+* **users<font color=red>*</font>**: github账户和钉钉用户手机号的映射关系，每个用户之前使用逗号分隔，用户名与手机号之间使用冒号分隔，e.g. "Alice:150xxxx,Bob:172xxxx"
 
 * **reviewers<font color=red>*</font>**: 代码审计人的手机号，e.g. "132xxxx,178xxxx,139xxxx"
 
